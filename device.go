@@ -58,7 +58,12 @@ func (d *Device) checkHtypeForFirewall(c *AbiquoClient) (bool, error) {
 	json.Unmarshal(htype_resp.Body(), &htype)
 
 	if _, exist := htype.Operations["firewall"]; exist {
-		return true, nil
+		fw := htype.Operations["firewall"]
+		if _, exist = fw["createFirewallPolicy"]; exist {
+			return false, nil
+		} else {
+			return true, nil
+		}
 	} else {
 		return false, nil
 	}
