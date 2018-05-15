@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
-	"net/http/cookiejar"
 	"os"
 	"time"
 
@@ -250,27 +250,50 @@ func (c *AbiquoClient) Login() (User, error) {
 }
 
 func (c *AbiquoClient) upload(uri string, params map[string]string, paramName, path string) (*http.Response, error) {
-	// Need the cookie to authenticate to AM
-	jar, _ := cookiejar.New(nil)
-	c.client.SetCookieJar(jar)
-
-	_, err := c.Login()
+	// Need the X-Abiquo-Token to authenticate to AM
+	login_resp, err := c.checkResponse(c.client.R().SetHeader("Accept", "application/vnd.abiquo.user+json").
+		Get(fmt.Sprintf("%s/login", c.client.HostURL)))
 	if err != nil {
 		return nil, err
 	}
 
-	httpCli := c.client.GetClient()
-	httpCli.Jar = jar
+	token := ""
+	for k, v := range login_resp.RawResponse.Header {
+		if k == "X-Abiquo-Token" {
+			token = v[0]
+		}
+	}
 
 	httpReq, err := http.NewRequest("POST", uri, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	httpReq.Header.Set("Authorization", fmt.Sprintf("Token %s", token))
 	ms := multipartstreamer.New()
 	ms.WriteFields(params)
 	ms.WriteFile(paramName, path)
 	ms.SetupRequest(httpReq)
 
-	return c.client.GetClient().Do(httpReq)
+	resp, err := c.client.GetClient().Do(httpReq)
+	if resp.StatusCode > 399 {
+		var errCol ErrorCollection
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		log.Printf("Response Body : %s", bodyBytes)
+		if err != nil {
+			return resp, err
+		}
+		err = json.Unmarshal(bodyBytes, &errCol)
+		if err != nil {
+			// Not errorDTO
+			abqerror := fmt.Errorf("ERROR %d: %s", resp.StatusCode, string(bodyBytes))
+			return resp, abqerror
+		}
+
+		abqerror := errCol.Collection[0]
+		err = fmt.Errorf("ERROR %s - %s (HTTP %d)", abqerror.Code, abqerror.Message, resp.StatusCode)
+		return resp, err
+	}
+
+	return resp, err
 }

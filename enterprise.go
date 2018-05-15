@@ -52,6 +52,7 @@ func (e *Enterprise) GetRepos(c *AbiquoClient) ([]Repo, error) {
 			if err != nil {
 				return repos, err
 			}
+			reposcol = RepoCollection{}
 			json.Unmarshal(repos_raw.Body(), &reposcol)
 		} else {
 			break

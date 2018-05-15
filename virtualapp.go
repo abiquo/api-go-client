@@ -50,6 +50,7 @@ func (v *VirtualApp) GetVMs(c *AbiquoClient) ([]VirtualMachine, error) {
 			if err != nil {
 				return vms, err
 			}
+			vmsCol = VirtualMachineCollection{}
 			json.Unmarshal(vms_raw.Body(), &vmsCol)
 		} else {
 			break

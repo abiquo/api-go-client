@@ -49,6 +49,7 @@ func (v *VDC) GetVirtualApps(c *AbiquoClient) ([]VirtualApp, error) {
 			if err != nil {
 				return allVapps, err
 			}
+			vapps = VirtualAppCollection{}
 			json.Unmarshal(vapps_raw.Body(), &vapps)
 		} else {
 			break
@@ -94,6 +95,7 @@ func (v *VDC) GetTemplates(c *AbiquoClient) ([]VirtualMachineTemplate, error) {
 			if err != nil {
 				return alltemplates, err
 			}
+			templates = TemplateCollection{}
 			json.Unmarshal(templates_raw.Body(), &templates)
 		} else {
 			break
@@ -194,6 +196,7 @@ func (v *VDC) GetExternalNetworks(c *AbiquoClient) ([]Vlan, error) {
 			if err != nil {
 				return nets, err
 			}
+			netCol = VlanCollection{}
 			json.Unmarshal(nets_resp.Body(), &netCol)
 		} else {
 			break
@@ -225,6 +228,7 @@ func (v *VDC) GetPrivateNetworks(c *AbiquoClient) ([]Vlan, error) {
 			if err != nil {
 				return nets, err
 			}
+			netCol = VlanCollection{}
 			json.Unmarshal(nets_resp.Body(), &netCol)
 		} else {
 			break
@@ -302,6 +306,7 @@ func (v *VDC) AllocateFloatingIp(c *AbiquoClient) (Ip, error) {
 			if err != nil {
 				return theIp, err
 			}
+			topurchase = IpCollection{}
 			json.Unmarshal(topurchase_resp.Body(), &topurchase)
 		} else {
 			break
@@ -335,6 +340,7 @@ func (v *VDC) GetPublicNetworks(c *AbiquoClient) ([]Vlan, error) {
 			if err != nil {
 				return nets, err
 			}
+			netCol = VlanCollection{}
 			json.Unmarshal(pubnets_resp.Body(), &netCol)
 		} else {
 			break
@@ -365,6 +371,7 @@ func (v *VDC) GetIpsToPurchase(c *AbiquoClient) ([]Ip, error) {
 			if err != nil {
 				return ips, err
 			}
+			ipCol = IpCollection{}
 			json.Unmarshal(ips_resp.Body(), &ipCol)
 		} else {
 			break

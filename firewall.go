@@ -39,6 +39,7 @@ func (f *Firewall) GetRules(c *AbiquoClient) ([]FirewallRule, error) {
 			if err != nil {
 				return rules, err
 			}
+			rulescol = FirewallRuleCollection{}
 			json.Unmarshal(rules_resp.Body(), &rulescol)
 		} else {
 			break

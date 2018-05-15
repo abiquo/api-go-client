@@ -55,6 +55,7 @@ func (t *VirtualMachineTemplate) GetDisks(c *AbiquoClient) ([]Disk, error) {
 			if err != nil {
 				return disks, err
 			}
+			disksCol = DiskCollection{}
 			json.Unmarshal(disks_resp.Body(), &disksCol)
 		} else {
 			break

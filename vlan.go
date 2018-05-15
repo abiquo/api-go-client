@@ -60,6 +60,7 @@ func (v *Vlan) GetFreeIp(c *AbiquoClient) (Ip, error) {
 			if err != nil {
 				return ip, err
 			}
+			ipcol = IpCollection{}
 			json.Unmarshal(ips_resp.Body(), &ipcol)
 		} else {
 			break

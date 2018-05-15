@@ -131,6 +131,7 @@ func (d *Device) GetFirewalls(c *AbiquoClient) ([]Firewall, error) {
 			if err != nil {
 				return fws, err
 			}
+			fwCol = FirewallCollection{}
 			json.Unmarshal(fws_resp.Body(), &fwCol)
 		} else {
 			break

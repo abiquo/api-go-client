@@ -2,6 +2,7 @@ package abiquo_api
 
 import (
 	"encoding/json"
+	// "log"
 )
 
 type RepoCollection struct {
@@ -27,16 +28,18 @@ func (r *Repo) GetTemplates(c *AbiquoClient) ([]VirtualMachineTemplate, error) {
 
 	for {
 		for _, t := range templatesCol.Collection {
+			// l, _ := t.GetLink("edit")
+			// log.Printf("CLIENT REPO == Found template %s at %s", t.Name, l.Href)
 			templates = append(templates, t)
 		}
 		if templatesCol.HasNext() {
 			next_link := templatesCol.GetNext()
 			templates_raw, err := c.checkResponse(c.client.R().SetHeader("Accept", "application/vnd.abiquo.virtualmachinetemplates+json").
-				SetQueryParam("master", "true").
 				Get(next_link.Href))
 			if err != nil {
 				return templates, err
 			}
+			templatesCol = TemplateCollection{}
 			json.Unmarshal(templates_raw.Body(), &templatesCol)
 		} else {
 			break
