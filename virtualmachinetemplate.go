@@ -2,7 +2,6 @@ package abiquo_api
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 type TemplateCollection struct {
@@ -32,6 +31,13 @@ type VirtualMachineTemplate struct {
 	EnableDisksHotReconfigure        bool   `json:"enableDisksHotReconfigure,omitempty"`
 	EnableNicsHotReconfigure         bool   `json:"enableNicsHotReconfigure,omitempty"`
 	EnableRemoteAccessHotReconfigure bool   `json:"enableRemoteAccessHotReconfigure,omitempty"`
+	CpuMin                           int    `json:"cpuMin,omitempty"`
+	CpuMax                           int    `json:"cpuMax,omitempty"`
+	RamMin                           int    `json:"ramMin,omitempty"`
+	RamMax                           int    `json:"ramMax,omitempty"`
+	GuestSetup                       string `json:"guestSetup,omitempty"`
+	EnableOnlyHPRecommended          bool   `json:"enableOnlyHPRecommended,omitempty"`
+	GenerateGuestInitialPassword     bool   `json:"generateGuestInitialPassword,omitempty"`
 }
 
 func (t *VirtualMachineTemplate) GetDisks(c *AbiquoClient) ([]Disk, error) {
@@ -79,12 +85,8 @@ func (t *VirtualMachineTemplate) ReplacePrimaryDisk(c *AbiquoClient, diskdef Dis
 	params := map[string]string{
 		"diskInfo": string(diskdef_json),
 	}
-	resp, err := c.upload(templateUpdateUrl, params, "diskFile", file)
+	_, err = c.upload(templateUpdateUrl, params, "diskFile", file)
 	if err != nil {
-		return newTemplate, err
-	}
-	if resp.StatusCode > 399 {
-		err = fmt.Errorf("ERROR %s - HTTP %d", resp.Status, resp.StatusCode)
 		return newTemplate, err
 	}
 
@@ -98,8 +100,11 @@ func (t *VirtualMachineTemplate) ReplacePrimaryDisk(c *AbiquoClient, diskdef Dis
 
 func (t *VirtualMachineTemplate) Update(c *AbiquoClient) error {
 	edit_lnk, _ := t.GetLink("edit")
+	jsonStr, err := json.Marshal(t)
+
 	resp, err := c.checkResponse(c.client.R().SetHeader("Accept", edit_lnk.Type).
 		SetHeader("Content-Type", edit_lnk.Type).
+		SetBody(jsonStr).
 		Put(edit_lnk.Href))
 
 	if err != nil {

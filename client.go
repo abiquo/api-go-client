@@ -1,6 +1,7 @@
 package abiquo_api
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -8,17 +9,19 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
+	"github.com/dghubble/oauth1"
 	"github.com/ernesto-jimenez/httplogger"
 	"github.com/go-resty/resty"
-	"github.com/nhjk/oauth"
 	"github.com/technoweenie/multipartstreamer"
 )
 
 type AbiquoClient struct {
-	client *resty.Client
+	client     *resty.Client
+	baseClient *http.Client
 }
 
 func GetClient(apiurl string, user string, pass string, insecure bool) *AbiquoClient {
@@ -53,14 +56,8 @@ func GetClient(apiurl string, user string, pass string, insecure bool) *AbiquoCl
 func GetOAuthClient(apiurl string, api_key string, api_secret string, token string, token_secret string, insecure bool) *AbiquoClient {
 	rc := resty.New()
 
-	rc.SetPreRequestHook(func(c *resty.Client, r *resty.Request) error {
-		req := r.RawRequest
-
-		consumer := &oauth.Consumer{api_key, api_secret}
-		consumer.Authorize(req, &oauth.Token{token, token_secret})
-
-		return nil
-	})
+	oauth_config := oauth1.NewConfig(api_key, url.QueryEscape(api_secret))
+	oauth_token := oauth1.NewToken(token, url.QueryEscape(token_secret))
 
 	baseTransport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
@@ -82,9 +79,12 @@ func GetOAuthClient(apiurl string, api_key string, api_secret string, token stri
 	}
 
 	rc.SetHostURL(apiurl)
-	rc.SetTransport(baseClient.Transport)
+	ctx := context.WithValue(oauth1.NoContext, oauth1.HTTPClient, baseClient)
+	httpClient := oauth_config.Client(ctx, oauth_token)
 
-	return &AbiquoClient{client: rc}
+	rc.SetTransport(httpClient.Transport)
+
+	return &AbiquoClient{client: rc, baseClient: baseClient}
 }
 
 func (c *AbiquoClient) checkResponse(resp *resty.Response, err error) (*resty.Response, error) {
@@ -275,7 +275,7 @@ func (c *AbiquoClient) upload(uri string, params map[string]string, paramName, p
 	ms.WriteFile(paramName, path)
 	ms.SetupRequest(httpReq)
 
-	resp, err := c.client.GetClient().Do(httpReq)
+	resp, err := c.baseClient.Do(httpReq)
 	if resp.StatusCode > 399 {
 		var errCol ErrorCollection
 		bodyBytes, err := ioutil.ReadAll(resp.Body)
