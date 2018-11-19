@@ -140,6 +140,38 @@ func (l *httpLogger) LogResponse(req *http.Request, res *http.Response, err erro
 	}
 }
 
+func (c *AbiquoClient) GetEvents(params map[string]string) ([]Event, error) {
+	var events []Event
+	var eventsCol EventCollection
+
+	events_resp, err := c.client.R().SetHeader("Accept", "application/vnd.abiquo.events+json").
+		SetQueryParams(params).
+		Get(fmt.Sprintf("%s/events", c.client.HostURL))
+	if err != nil {
+		return events, err
+	}
+
+	err = json.Unmarshal(events_resp.Body(), &eventsCol)
+	for {
+		for _, e := range eventsCol.Collection {
+			events = append(events, e)
+		}
+
+		if eventsCol.HasNext() {
+			next_link := eventsCol.GetNext()
+			events_resp, err = c.client.R().SetHeader("Accept", "application/vnd.abiquo.events+json").
+				Get(next_link.Href)
+			if err != nil {
+				return events, err
+			}
+			json.Unmarshal(events_resp.Body(), &eventsCol)
+		} else {
+			break
+		}
+	}
+	return events, nil
+}
+
 func (c *AbiquoClient) GetConfigProperties() ([]ConfigProperty, error) {
 	var propsCol ConfigPropertyCollection
 	var allprops []ConfigProperty
