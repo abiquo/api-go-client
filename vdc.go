@@ -449,3 +449,42 @@ func (v *VDC) CreateDisk(d *Disk, c *AbiquoClient) error {
 
 	return nil
 }
+
+func (v *VDC) GetDatastoreTiers(c *AbiquoClient) ([]DatastoreTier, error) {
+	var tiers []DatastoreTier
+	var tiersCol DatastoreTierCollection
+	var location Location
+
+	location_raw, err := v.FollowLink("location", c)
+	if err != nil {
+		return tiers, err
+	}
+	json.Unmarshal(location_raw.Body(), &location)
+
+	tiers_link, _ := location.GetLink("datastoretiers")
+	tiers_resp, err := location.FollowLink("datastoretiers", c)
+	if err != nil {
+		return tiers, err
+	}
+	json.Unmarshal(tiers_resp.Body(), &tiersCol)
+
+	for {
+		for _, t := range tiersCol.Collection {
+			tiers = append(tiers, t)
+		}
+		if tiersCol.HasNext() {
+			next_link := tiersCol.GetNext()
+			tiers_resp, err := c.checkResponse(c.client.R().SetHeader("Accept", tiers_link.Type).
+				Get(next_link.Href))
+			if err != nil {
+				return tiers, err
+			}
+			tiersCol = DatastoreTierCollection{}
+			json.Unmarshal(tiers_resp.Body(), &tiersCol)
+		} else {
+			break
+		}
+	}
+
+	return tiers, nil
+}

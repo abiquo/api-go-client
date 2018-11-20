@@ -50,6 +50,8 @@ func (v *VirtualMachine) Update(c *AbiquoClient) error {
 		return err
 	}
 
+	log.Println(fmt.Sprintf("To update VM: %s", body_json))
+
 	resp, err := c.client.R().SetHeader("Accept", "application/vnd.abiquo.acceptedrequest+json").
 		SetHeader("Content-Type", edit_lnk.Type).
 		SetBody(string(body_json)).
