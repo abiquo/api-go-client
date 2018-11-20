@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 )
@@ -36,6 +37,72 @@ type VirtualMachine struct {
 	CreationTimestamp int64                  `json:"creationTimestamp,omitempty"`
 	Backuppolicies    []interface{}          `json:"backuppolicies,omitempty"`
 	LastSynchronize   int64                  `json:"lastSynchronize,omitempty"`
+	IconUrl           string                 `json:"iconUrl,omitempty"`
+}
+
+func (v *VirtualMachine) Update(c *AbiquoClient) error {
+	// var vm VirtualMachine
+
+	edit_lnk, _ := v.GetLink("edit")
+
+	body_json, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.client.R().SetHeader("Accept", "application/vnd.abiquo.acceptedrequest+json").
+		SetHeader("Content-Type", edit_lnk.Type).
+		SetBody(string(body_json)).
+		Put(edit_lnk.Href)
+
+	if resp.StatusCode() == 202 {
+		accept_request_raw, err := c.checkResponse(resp, err)
+		if err != nil {
+			return err
+		}
+		var accept_request AcceptedRequest
+		json.Unmarshal(accept_request_raw.Body(), &accept_request)
+
+		for {
+			vm_raw, err := v.Refresh(c)
+			if err != nil {
+				return err
+			}
+			json.Unmarshal(vm_raw.Body(), &v)
+			if v.State == "LOCKED" {
+				time.Sleep(10 * time.Second)
+			} else {
+				break
+			}
+		}
+
+		task_lnk, _ := accept_request.GetLink("status")
+		task_raw, err := c.checkResponse(c.client.R().SetHeader("Accept", "application/vnd.abiquo.taskextended+json").
+			Get(task_lnk.Href))
+		if err != nil {
+			return err
+		}
+		var task Task
+		json.Unmarshal(task_raw.Body(), &task)
+		if task.State != "FINISHED_SUCCESSFULLY" {
+			errorMsg := fmt.Sprintf("Task to reconfigure VM %s failed. Check events.", v.Name)
+			return errors.New(errorMsg)
+		}
+	} else if resp.StatusCode() == 204 {
+		vm_raw, err := v.Refresh(c)
+		if err != nil {
+			return err
+		}
+		log.Println(fmt.Sprintf("Updated VM resp: %s", vm_raw.Body()))
+		json.Unmarshal(vm_raw.Body(), &v)
+	} else {
+		_, err := c.checkResponse(resp, err)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (v *VirtualMachine) GetVapp(c *AbiquoClient) (VirtualApp, error) {
@@ -248,4 +315,36 @@ func (v *VirtualMachine) GetMetadata(c *AbiquoClient) (map[string]interface{}, e
 
 	json.Unmarshal(metadata.Body(), &mdata)
 	return mdata, nil
+}
+
+func (v *VirtualMachine) GetDisks(c *AbiquoClient) ([]Disk, error) {
+	var disks []Disk
+	var diskcol DiskCollection
+
+	disks_lnk, _ := v.GetLink("harddisks")
+	disks_resp, err := v.FollowLink("harddisks", c)
+	if err != nil {
+		return disks, err
+	}
+	json.Unmarshal(disks_resp.Body(), &diskcol)
+
+	for {
+		for _, d := range diskcol.Collection {
+			disks = append(disks, d)
+		}
+		if diskcol.HasNext() {
+			next_link := diskcol.GetNext()
+			disks_resp, err := c.checkResponse(c.client.R().SetHeader("Accept", disks_lnk.Type).
+				Get(next_link.Href))
+			if err != nil {
+				return disks, err
+			}
+			diskcol = DiskCollection{}
+			json.Unmarshal(disks_resp.Body(), &diskcol)
+		} else {
+			break
+		}
+	}
+
+	return disks, nil
 }

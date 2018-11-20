@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 )
 
 type VdcCollection struct {
@@ -426,4 +427,25 @@ func (v *VDC) GetDevice(c *AbiquoClient) (Device, error) {
 	}
 	json.Unmarshal(dev_resp.Body(), &dev)
 	return dev, nil
+}
+
+func (v *VDC) CreateDisk(d *Disk, c *AbiquoClient) error {
+	disks_lnk, _ := v.GetLink("disks")
+
+	body_json, err := json.Marshal(d)
+	if err != nil {
+		return err
+	}
+
+	disk_resp, err := c.checkResponse(c.client.R().SetHeader("Accept", "application/vnd.abiquo.harddisk+json").
+		SetHeader("Content-Type", "application/vnd.abiquo.harddisk+json").
+		SetBody(body_json).
+		Post(disks_lnk.Href))
+	log.Println(string(disk_resp.Body()))
+	if err != nil {
+		return err
+	}
+	json.Unmarshal(disk_resp.Body(), &d)
+
+	return nil
 }

@@ -13,6 +13,12 @@ type Link struct {
 	Href  string `json:"href,omitempty"`
 	Title string `json:"title,omitempty"`
 	Rel   string `json:"rel,omitempty"`
+
+	// Oh my...
+	DiskController     string `json:"diskController,omitempty"`
+	DiskControllerType string `json:"diskControllerType,omitempty"`
+	DiskLabel          string `json:"diskLabel,omitempty"`
+	Length             string `json:"length,omitempty"`
 }
 
 func (l *Link) Get(c *AbiquoClient) (*resty.Response, error) {
