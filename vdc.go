@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 )
 
 type VdcCollection struct {
@@ -348,6 +349,38 @@ func (v *VDC) GetPublicNetworks(c *AbiquoClient) ([]Vlan, error) {
 		}
 	}
 	return nets, nil
+}
+
+func (v *VDC) GetIpsPurchased(c *AbiquoClient, onlyAvailable bool) ([]Ip, error) {
+	var ips []Ip
+	var ipCol IpCollection
+
+	ips_link, _ := v.GetLink("purchased")
+	ips_resp, err := v.FollowLinkWithParams("purchased", "onlyavailable="+strconv.FormatBool(onlyAvailable), c)
+	if err != nil {
+		return ips, err
+	}
+	json.Unmarshal(ips_resp.Body(), &ipCol)
+
+	for {
+		for _, i := range ipCol.Collection {
+			ips = append(ips, i)
+		}
+		if ipCol.HasNext() {
+			next_link := ipCol.GetNext()
+			ips_resp, err := c.checkResponse(c.client.R().SetHeader("Accept", ips_link.Type).
+				Get(next_link.Href))
+			if err != nil {
+				return ips, err
+			}
+			ipCol = IpCollection{}
+			json.Unmarshal(ips_resp.Body(), &ipCol)
+		} else {
+			break
+		}
+	}
+
+	return ips, nil
 }
 
 func (v *VDC) GetIpsToPurchase(c *AbiquoClient) ([]Ip, error) {

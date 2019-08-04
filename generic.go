@@ -13,14 +13,23 @@ type DTO struct {
 }
 
 func (d *DTO) FollowLink(rel string, c *AbiquoClient) (*resty.Response, error) {
+	return d.FollowLinkWithParams(rel, "", c)
+}
+
+func (d *DTO) FollowLinkWithParams(rel string, extraParams string, c *AbiquoClient) (*resty.Response, error) {
 	link, err := d.GetLink(rel)
 	if err != nil {
 		return &resty.Response{}, err
 	}
 
+	uri := link.Href
+	if len(extraParams) > 0 {
+		uri = uri + "?" + extraParams
+	}
+
 	resp, err := c.checkResponse(c.client.NewRequest().
 		SetHeader("Accept", link.Type).
-		Get(link.Href))
+		Get(uri))
 	return resp, err
 }
 
