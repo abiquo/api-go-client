@@ -494,8 +494,8 @@ func (v *VDC) GetDatastoreTiers(c *AbiquoClient) ([]DatastoreTier, error) {
 	}
 	json.Unmarshal(location_raw.Body(), &location)
 
-	tiers_link, _ := location.GetLink("datastoretiers")
-	tiers_resp, err := location.FollowLink("datastoretiers", c)
+	tiers_link, _ := location.GetLink("alloweddatastoretiers")
+	tiers_resp, err := location.FollowLink("alloweddatastoretiers", c)
 	if err != nil {
 		return tiers, err
 	}
